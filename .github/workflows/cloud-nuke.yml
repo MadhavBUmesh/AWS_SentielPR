@@ -1,0 +1,38 @@
+name: Cloud Nuke AWS Account Wipe
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_regions:
+        description: "Regions to nuke (use 'all' to wipe the entire AWS account)"
+        required: true
+        default: "all"
+        type: string
+
+jobs:
+  cloud-nuke:
+    name: Nuke AWS Account
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Install cloud-nuke
+        run: |
+          curl -sSL -o /usr/local/bin/cloud-nuke https://github.com/gruntwork-io/cloud-nuke/releases/download/v0.52.0/cloud-nuke_linux_amd64
+          chmod +x /usr/local/bin/cloud-nuke
+
+      - name: Run cloud-nuke (Wipe AWS Account)
+        run: |
+          if [ "${{ inputs.target_regions }}" = "all" ] || [ -z "${{ inputs.target_regions }}" ]; then
+            echo "Nuking ALL regions across the entire AWS account..."
+            cloud-nuke aws --force
+          else
+            echo "Nuking region: ${{ inputs.target_regions }}..."
+            cloud-nuke aws --region "${{ inputs.target_regions }}" --force
+          fi
